@@ -1,0 +1,70 @@
+# Name of your workflow
+name: CI-CD for AWS Lambda
+
+# When this workflow is triggered
+on:
+  push:
+    branches:
+      - master  # Run on pushes to the main branch
+  pull_request:
+    branches:
+      - master  # Run on pull requests targeting main
+
+# A workflow run is made up of one or more jobs
+jobs:
+  # The "test" job (Continuous Integration)
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest # Use a Linux runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Action to check out your code
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Use a specific Python version
+
+      - name: Install test dependencies
+        run: |
+          # No dependencies needed for this simple handler
+          echo "No test dependencies to install."
+
+      - name: Run tests (CI)
+        run: |
+          python test_app.py
+
+  # The "deploy" job (Continuous Deployment)
+  deploy:
+    name: Deploy to AWS Lambda
+    runs-on: ubuntu-latest
+    needs: test # This job will ONLY run if the "test" job succeeds
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create Zip File
+        run: |
+          zip lambda_function.zip app.py
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Use the secrets you created in Step 3
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1 # Change to your Lambda's region
+
+      - name: Deploy to AWS Lambda (CD)
+        run: |
+          aws lambda update-function-code \
+            --function-name blog-func \
+            --zip-file fileb://lambda_function.zip
+
